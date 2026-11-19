@@ -26,6 +26,10 @@
     background:var(--accent); color:#141213; border:0; border-radius:999px; padding:15px 26px;
     font:inherit; font-weight:700; font-size:15px; letter-spacing:.02em; display:flex; align-items:center; gap:10px;
     box-shadow:0 8px 30px rgba(0,0,0,.45); cursor:pointer; }
+  a.ar-btn { text-decoration:none; }
+  .ar-btn { white-space:nowrap; }
+  .ar-btn[hidden], .desk[hidden] { display:none; }
+  .desk { position:absolute; left:50%; bottom:22px; transform:translateX(-50%); width:calc(100% - 40px); max-width:420px; font-size:12px; color:var(--muted); text-align:center; }
   .ar-btn svg { width:20px; height:20px; }
   .hint { font-size:12px; color:var(--muted); padding:12px 20px 18px; line-height:1.5; text-align:center; }
   .hint a { color:var(--fg); }
@@ -60,6 +64,11 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg>
       Voir dans ma pièce
     </button>
+    <a class="ar-btn" id="ar-fallback" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg>
+      Voir dans ma pièce
+    </a>
+    <p class="desk" id="desk" hidden>Pour la réalité augmentée, ouvrez cette page sur un téléphone (scannez le QR code).</p>
   </model-viewer>
 
   <p class="hint">Touchez « Voir dans ma pièce », puis visez le sol.<br>
@@ -78,20 +87,37 @@
   function sceneViewerUrl(glb) {
     const abs = new URL(glb, location.href).href;
     return 'intent://arvr.google.com/scene-viewer/1.0?file=' + encodeURIComponent(abs) +
-      '&mode=ar_preferred&title=KLAAS#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=' +
+      '&mode=ar_preferred&title=KLAAS#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url=' +
       encodeURIComponent(location.href) + ';end;';
   }
+  const UA = navigator.userAgent;
+  const IS_ANDROID = /android/i.test(UA);
+  const IS_IOS = /iPad|iPhone|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const fb = document.getElementById('ar-fallback'), desk = document.getElementById('desk');
+  let current = 'corps';
+  function updateFallback() {
+    const v = V[current];
+    fb.href = IS_IOS ? v.usdz : sceneViewerUrl(v.glb);
+    if (IS_IOS) fb.setAttribute('rel', 'ar'); else fb.removeAttribute('rel');
+    // model-viewer hides its own AR button on some browsers (e.g. Firefox Android): show ours instead
+    const own = mv.canActivateAR;
+    fb.hidden = own || !(IS_ANDROID || IS_IOS);
+    desk.hidden = own || IS_ANDROID || IS_IOS;
+  }
   function show(key) {
-    const v = V[key];
+    const v = V[key]; current = key;
     mv.src = v.glb; mv.iosSrc = v.usdz;
     ios.href = v.usdz; andr.href = sceneViewerUrl(v.glb);
     document.documentElement.style.setProperty('--accent', v.accent);
     document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === key));
     try { history.replaceState(null, '', '#' + key); } catch (e) {}
+    updateFallback();
   }
   document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => show(b.dataset.v)));
   mv.addEventListener('progress', e => { const p = e.detail.totalProgress; bar.style.width = (p * 100) + '%'; bar.style.opacity = p >= 1 ? 0 : 1; });
-  mv.addEventListener('load', () => mv.play({ repetitions: Infinity }));
+  mv.addEventListener('load', () => { mv.play({ repetitions: Infinity }); setTimeout(updateFallback, 300); });
+  mv.addEventListener('ar-status', updateFallback);
+  customElements.whenDefined('model-viewer').then(() => setTimeout(updateFallback, 800));
   show(location.hash === '#buste' ? 'buste' : 'corps');
 </script>
 </body>
