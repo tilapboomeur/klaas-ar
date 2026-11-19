@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KLAAS — Avatar AR</title>
+<meta name="description" content="Avatar KLAAS en réalité augmentée">
+<script type="module" src="model-viewer.min.js"></script>
+<style>
+  :root { --bg:#141213; --fg:#f4eef0; --muted:#a59ca0; --line:#2c2729; --pink:#ff4d8d; --blue:#8fb3ff; --accent:var(--pink); }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; background:var(--bg); color:var(--fg);
+    font-family: ui-sans-serif, -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  body { display:flex; flex-direction:column; min-height:100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  header { padding:18px 20px 10px; display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+  h1 { font-size:15px; letter-spacing:.28em; font-weight:600; }
+  header p { font-size:12px; color:var(--muted); letter-spacing:.04em; }
+  .tabs { display:flex; gap:8px; padding:0 20px 8px; }
+  .tabs button { flex:1; background:transparent; color:var(--muted); border:1px solid var(--line);
+    padding:11px 10px; border-radius:999px; font:inherit; font-size:13px; cursor:pointer; transition:.2s; }
+  .tabs button[aria-pressed="true"] { color:var(--bg); background:var(--accent); border-color:var(--accent); font-weight:600; }
+  model-viewer { flex:1; width:100%; min-height:420px; background:
+    radial-gradient(120% 80% at 50% 40%, #241f22 0%, var(--bg) 70%); --poster-color:transparent; }
+  .ar-btn { position:absolute; left:50%; bottom:22px; transform:translateX(-50%);
+    background:var(--accent); color:#141213; border:0; border-radius:999px; padding:15px 26px;
+    font:inherit; font-weight:700; font-size:15px; letter-spacing:.02em; display:flex; align-items:center; gap:10px;
+    box-shadow:0 8px 30px rgba(0,0,0,.45); cursor:pointer; }
+  .ar-btn svg { width:20px; height:20px; }
+  .hint { font-size:12px; color:var(--muted); padding:12px 20px 18px; line-height:1.5; text-align:center; }
+  .hint a { color:var(--fg); }
+  .noar { position:absolute; left:50%; bottom:22px; transform:translateX(-50%); width:calc(100% - 40px); max-width:420px;
+    font-size:12px; color:var(--muted); text-align:center; display:none; }
+  model-viewer:not([ar-status]) .noar { display:block; }
+  .progress { position:absolute; left:0; right:0; top:0; height:2px; }
+  .progress span { display:block; height:100%; width:0; background:var(--accent); transition:width .2s; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>KLAAS</h1>
+    <p>Avatar · réalité augmentée</p>
+  </header>
+  <div class="tabs" role="group" aria-label="Version de l'avatar">
+    <button type="button" data-v="corps" aria-pressed="true">Corps entier · bleu</button>
+    <button type="button" data-v="buste" aria-pressed="false">Buste · rose</button>
+  </div>
+
+  <model-viewer id="mv"
+    src="models/Klaas_corps_bleu_anime.glb"
+    ios-src="models/Klaas_corps_bleu_anime.usdz"
+    alt="Avatar KLAAS en rubans chromés"
+    ar ar-modes="webxr scene-viewer quick-look" ar-placement="floor"
+    camera-controls touch-action="pan-y" autoplay
+    auto-rotate auto-rotate-delay="0" rotation-per-second="12deg"
+    shadow-intensity="0.6" exposure="1.1" environment-image="neutral"
+    interaction-prompt="none">
+    <div class="progress" slot="progress-bar"><span id="bar"></span></div>
+    <button class="ar-btn" slot="ar-button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg>
+      Voir dans ma pièce
+    </button>
+  </model-viewer>
+
+  <p class="hint">Touchez « Voir dans ma pièce », puis visez le sol.<br>
+    Lien direct si le bouton n'apparaît pas :
+    <a id="dl-ios" href="models/Klaas_corps_bleu_anime.usdz" rel="ar">iPhone</a> ·
+    <a id="dl-android" href="#">Android</a></p>
+
+<script>
+  const V = {
+    corps: { glb:'models/Klaas_corps_bleu_anime.glb', usdz:'models/Klaas_corps_bleu_anime.usdz', accent:'#8fb3ff', title:'KLAAS — corps' },
+    buste: { glb:'models/Klaas_buste_rose_anime.glb', usdz:'models/Klaas_buste_rose_anime.usdz', accent:'#ff4d8d', title:'KLAAS — buste' }
+  };
+  const mv = document.getElementById('mv');
+  const bar = document.getElementById('bar');
+  const ios = document.getElementById('dl-ios'), andr = document.getElementById('dl-android');
+  function sceneViewerUrl(glb) {
+    const abs = new URL(glb, location.href).href;
+    return 'intent://arvr.google.com/scene-viewer/1.0?file=' + encodeURIComponent(abs) +
+      '&mode=ar_preferred&title=KLAAS#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=' +
+      encodeURIComponent(location.href) + ';end;';
+  }
+  function show(key) {
+    const v = V[key];
+    mv.src = v.glb; mv.iosSrc = v.usdz;
+    ios.href = v.usdz; andr.href = sceneViewerUrl(v.glb);
+    document.documentElement.style.setProperty('--accent', v.accent);
+    document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === key));
+    try { history.replaceState(null, '', '#' + key); } catch (e) {}
+  }
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => show(b.dataset.v)));
+  mv.addEventListener('progress', e => { const p = e.detail.totalProgress; bar.style.width = (p * 100) + '%'; bar.style.opacity = p >= 1 ? 0 : 1; });
+  mv.addEventListener('load', () => mv.play({ repetitions: Infinity }));
+  show(location.hash === '#buste' ? 'buste' : 'corps');
+</script>
+</body>
+</html>
